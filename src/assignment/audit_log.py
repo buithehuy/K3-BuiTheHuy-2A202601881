@@ -16,11 +16,15 @@ class AuditLogPlugin:
     def __init__(self):
         self.name = "audit_log"
         self.logs: list[dict] = []
-        self._open: dict[str, float] = {}
+        self._open: dict[str, dict] = {}
 
     def record_input(self, *, user_id: str, text: str, request_id: str | None = None):
         """TODO: store input + start timestamp keyed by request_id/user_id."""
-        raise NotImplementedError("Implement AuditLogPlugin.record_input")
+        key = request_id or user_id
+        self._open[key] = {
+            "start_time": datetime.now(timezone.utc).timestamp(),
+            "input": text
+        }
 
     def record_output(
         self,
@@ -32,12 +36,34 @@ class AuditLogPlugin:
         request_id: str | None = None,
     ):
         """TODO: store output, layer decision, latency; append to self.logs."""
-        raise NotImplementedError("Implement AuditLogPlugin.record_output")
+        key = request_id or user_id
+        input_data = self._open.pop(key, None)
+        
+        latency = None
+        input_text = None
+        if input_data:
+            latency = datetime.now(timezone.utc).timestamp() - input_data["start_time"]
+            input_text = input_data["input"]
+
+        self.logs.append({
+            "timestamp": utc_now_iso(),
+            "user_id": user_id,
+            "request_id": request_id,
+            "input": input_text,
+            "output": text,
+            "blocked": blocked,
+            "layer": layer,
+            "latency": latency
+        })
 
     def export_json(self, filepath: str = "outputs/audit_log.json"):
         """Write logs to disk (JSON array)."""
-        # TODO: ensure parent dirs exist, dump self.logs with indent=2
-        raise NotImplementedError("Implement AuditLogPlugin.export_json")
+        import os
+        from pathlib import Path
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(self.logs, f, indent=2)
 
 
 def utc_now_iso() -> str:

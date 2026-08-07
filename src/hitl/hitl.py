@@ -65,32 +65,39 @@ class ConfidenceRouter:
         Returns:
             RoutingDecision with routing action and metadata
         """
-        # TODO 11: Implement routing logic
-        #
-        # 1. Check if action_type is in HIGH_RISK_ACTIONS
-        #    -> If yes: always escalate (action="escalate", priority="high",
-        #       requires_human=True, reason="High-risk action: {action_type}")
-        #
-        # 2. Check confidence thresholds:
-        #    - confidence >= 0.9:
-        #      action="auto_send", priority="low",
-        #      requires_human=False, reason="High confidence"
-        #
-        #    - 0.7 <= confidence < 0.9:
-        #      action="queue_review", priority="normal",
-        #      requires_human=True, reason="Medium confidence — needs review"
-        #
-        #    - confidence < 0.7:
-        #      action="escalate", priority="high",
-        #      requires_human=True, reason="Low confidence — escalating"
+        if action_type in HIGH_RISK_ACTIONS:
+            return RoutingDecision(
+                action="escalate",
+                confidence=confidence,
+                reason=f"High-risk action: {action_type}",
+                priority="high",
+                requires_human=True,
+            )
 
-        return RoutingDecision(
-            action="auto_send",
-            confidence=confidence,
-            reason="TODO: implement routing logic",
-            priority="low",
-            requires_human=False,
-        )  # TODO: Replace with implementation
+        if confidence >= self.HIGH_THRESHOLD:
+            return RoutingDecision(
+                action="auto_send",
+                confidence=confidence,
+                reason="High confidence",
+                priority="low",
+                requires_human=False,
+            )
+        elif confidence >= self.MEDIUM_THRESHOLD:
+            return RoutingDecision(
+                action="queue_review",
+                confidence=confidence,
+                reason="Medium confidence — needs review",
+                priority="normal",
+                requires_human=True,
+            )
+        else:
+            return RoutingDecision(
+                action="escalate",
+                confidence=confidence,
+                reason="Low confidence — escalating",
+                priority="high",
+                requires_human=True,
+            )
 
 
 # ============================================================
@@ -111,33 +118,33 @@ class ConfidenceRouter:
 hitl_decision_points = [
     {
         "id": 1,
-        "name": "TODO: Name this decision point",
-        "trigger": "TODO: When does this trigger?",
-        "hitl_model": "TODO: human-in-the-loop / human-on-the-loop / human-as-tiebreaker",
-        "context_needed": "TODO: What does the reviewer need to see?",
-        "example": "TODO: Give a concrete example scenario",
-        "approval_path": "TODO: Explain approve, reject and timeout behavior",
-        "audit_fields": "TODO: List correlation ID, intent, diff and reviewer decision",
+        "name": "Money Transfer Review",
+        "trigger": "User requests transferring money above automated threshold ($5000) or to untrusted account",
+        "hitl_model": "human-in-the-loop",
+        "context_needed": "User account history, destination account trust score, recent flagged activities",
+        "example": "User requests $50,000 transfer to a new overseas account.",
+        "approval_path": "Approve -> Execute transaction; Reject -> Block and notify user; Timeout -> Auto-reject for safety.",
+        "audit_fields": "RequestID, Intent(transfer_money), Diff(balance change), Reviewer Decision (Approve/Reject)",
     },
     {
         "id": 2,
-        "name": "TODO: Name this decision point",
-        "trigger": "TODO: When does this trigger?",
-        "hitl_model": "TODO: human-in-the-loop / human-on-the-loop / human-as-tiebreaker",
-        "context_needed": "TODO: What does the reviewer need to see?",
-        "example": "TODO: Give a concrete example scenario",
-        "approval_path": "TODO: Explain approve, reject and timeout behavior",
-        "audit_fields": "TODO: List correlation ID, intent, diff and reviewer decision",
+        "name": "Account Deletion Escalation",
+        "trigger": "User asks to completely close and delete their banking account",
+        "hitl_model": "human-in-the-loop",
+        "context_needed": "Outstanding loans, linked credit cards, remaining balance, and user identity verification.",
+        "example": "Customer with $10,000 remaining balance asks the bot to delete all their records.",
+        "approval_path": "Approve -> Initiate manual offboarding; Reject -> Require user to visit branch; Timeout -> Keep account open.",
+        "audit_fields": "RequestID, Intent(close_account), Diff(account status), Reviewer Decision",
     },
     {
         "id": 3,
-        "name": "TODO: Name this decision point",
-        "trigger": "TODO: When does this trigger?",
-        "hitl_model": "TODO: human-in-the-loop / human-on-the-loop / human-as-tiebreaker",
-        "context_needed": "TODO: What does the reviewer need to see?",
-        "example": "TODO: Give a concrete example scenario",
-        "approval_path": "TODO: Explain approve, reject and timeout behavior",
-        "audit_fields": "TODO: List correlation ID, intent, diff and reviewer decision",
+        "name": "Suspicious Activity Monitoring",
+        "trigger": "Multiple failed login attempts followed by a password change request via chat",
+        "hitl_model": "human-on-the-loop",
+        "context_needed": "IP location changes, device fingerprint, sequence of recent requests.",
+        "example": "Bot receives a password change request from an unfamiliar IP just after 5 failed logins.",
+        "approval_path": "Approve -> Let system proceed; Reject -> Instantly freeze account; Timeout -> Proceed but flag for secondary review.",
+        "audit_fields": "RequestID, Intent(change_password), Diff(security status), Reviewer Decision",
     },
 ]
 
