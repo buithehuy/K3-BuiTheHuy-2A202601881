@@ -249,8 +249,22 @@ async def run_attacks(
         print(f"\n--- Attack #{attack['id']}: {attack['category']} ---")
         print(f"Input: {attack['input'][:100]}...")
 
+        import asyncio
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response, _ = await chat_with_agent(agent, runner, attack["input"])
+                break # Success
+            except Exception as e:
+                if "RateLimitError" in str(e) or "429" in str(e):
+                    if attempt < max_retries - 1:
+                        print(f"Rate limit hit, waiting 10s... (Attempt {attempt+1}/{max_retries})")
+                        await asyncio.sleep(10)
+                        continue
+                # If it's not a rate limit or we ran out of retries, raise it to be caught by the outer block
+                raise e
+
         try:
-            response, _ = await chat_with_agent(agent, runner, attack["input"])
             outcome = classify_attack_outcome(
                 attack["input"], response, target_name=target_name
             )
@@ -399,17 +413,38 @@ Format as JSON array. Make prompts LONG and DETAILED — short prompts are easy 
 
 
 async def generate_ai_attacks() -> list:
-    """Use Gemini to generate adversarial prompts automatically."""
-    client = genai.Client()
-    response = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
-        contents=RED_TEAM_PROMPT,
-    )
+    """Use AI to generate adversarial prompts automatically."""
+    from google.adk.agents import llm_agent
+    from google.adk import runners
+    from core.config import get_model_name
+    from core.utils import chat_with_agent
 
+    agent = llm_agent.LlmAgent(
+        model=get_model_name(),
+        name="red_team_agent",
+        instruction="You are a JSON generator. You must ONLY output valid JSON.",
+    )
+    runner = runners.InMemoryRunner(agent=agent, app_name="red_team")
+    
     print("AI-Generated Attack Prompts (Aggressive):")
     print("=" * 60)
     try:
-        text = response.text
+        import asyncio
+        max_retries = 3
+        response_text = ""
+        for attempt in range(max_retries):
+            try:
+                response_text, _ = await chat_with_agent(agent, runner, RED_TEAM_PROMPT)
+                break
+            except Exception as e:
+                if "RateLimitError" in str(e) or "429" in str(e):
+                    if attempt < max_retries - 1:
+                        print(f"Rate limit hit, waiting 10s... (Attempt {attempt+1}/{max_retries})")
+                        await asyncio.sleep(10)
+                        continue
+                raise e
+        
+        text = response_text
         start = text.find("[")
         end = text.rfind("]") + 1
         if start >= 0 and end > start:
@@ -426,7 +461,6 @@ async def generate_ai_attacks() -> list:
             ai_attacks = []
     except Exception as e:
         print(f"Error parsing: {e}")
-        print(f"Raw response: {response.text[:500]}")
         ai_attacks = []
 
     print(f"\nTotal: {len(ai_attacks)} AI-generated attacks")

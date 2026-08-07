@@ -27,7 +27,8 @@ from agents.security_boundary import (
     contains_secret,
     normalize_for_security,
 )
-from core.config import ALLOWED_TOPICS, BLOCKED_TOPICS
+from core.config import ALLOWED_TOPICS, BLOCKED_TOPICS, get_model_name
+from guardrails.input_guardrails import topic_filter
 from core.utils import chat_with_agent
 
 # Secrets embedded in the guarded system prompt (same values as unsafe agent).
@@ -241,7 +242,7 @@ def create_guards_agent():
     """Create VinBank agent with strong input + output guardrails (bonus target)."""
     plugins = [GuardsInputPlugin(), GuardsOutputPlugin()]
     agent = llm_agent.LlmAgent(
-        model="gemini-3.1-flash-lite",
+        model=get_model_name(),
         name="guards_assistant",
         instruction=GUARDS_INSTRUCTION,
     )

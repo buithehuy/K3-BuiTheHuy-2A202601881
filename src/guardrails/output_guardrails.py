@@ -10,6 +10,7 @@ import textwrap
 from google.genai import types
 from google.adk.agents import llm_agent
 from google.adk import runners
+from core.config import get_model_name
 from google.adk.plugins import base_plugin
 
 from core.utils import chat_with_agent
@@ -89,7 +90,7 @@ If UNSAFE, add a brief reason on the next line.
 """
 
 safety_judge_agent = llm_agent.LlmAgent(
-    model="gemini-2.0-flash",
+    model=get_model_name(),
     name="safety_judge",
     instruction=SAFETY_JUDGE_INSTRUCTION,
 )

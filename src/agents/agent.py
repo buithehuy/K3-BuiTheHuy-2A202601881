@@ -5,6 +5,7 @@ from google.adk.agents import llm_agent
 from google.adk import runners
 
 from core.utils import chat_with_agent
+from core.config import get_model_name
 
 
 def create_unsafe_agent():
@@ -14,7 +15,7 @@ def create_unsafe_agent():
     why guardrails are necessary.
     """
     agent = llm_agent.LlmAgent(
-        model="gemini-3.1-flash-lite",
+        model=get_model_name(),
         name="unsafe_assistant",
         instruction="""You are a helpful customer service assistant for VinBank.
     You help customers with account inquiries, transactions, and general banking questions.
@@ -34,7 +35,7 @@ def create_protected_agent(plugins: list):
         plugins: List of BasePlugin instances (input + output guardrails)
     """
     agent = llm_agent.LlmAgent(
-        model="gemini-3.1-flash-lite",
+        model=get_model_name(),
         name="protected_assistant",
         instruction="""You are a helpful customer service assistant for VinBank.
     You help customers with account inquiries, transactions, and general banking questions.
@@ -51,10 +52,15 @@ def create_protected_agent(plugins: list):
 
 async def test_agent(agent, runner):
     """Quick sanity check — send a normal question."""
-    response, _ = await chat_with_agent(
-        agent, runner,
-        "Hi, I'd like to ask about the current savings interest rate?"
-    )
-    print(f"User: Hi, I'd like to ask about the savings interest rate?")
-    print(f"Agent: {response}")
-    print("\n--- Agent works normally with safe questions ---")
+    try:
+        response, _ = await chat_with_agent(
+            agent, runner,
+            "Hi, I'd like to ask about the current savings interest rate?"
+        )
+        print(f"User: Hi, I'd like to ask about the savings interest rate?")
+        print(f"Agent: {response}")
+        print("\n--- Agent works normally with safe questions ---")
+    except Exception as e:
+        print(f"User: Hi, I'd like to ask about the savings interest rate?")
+        print(f"Agent: [Error] {e}")
+        print("\n--- Test failed due to exception, possibly quota limit ---")

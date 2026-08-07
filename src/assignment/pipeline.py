@@ -11,6 +11,7 @@ from assignment.audit_log import AuditLogPlugin
 from assignment.monitoring import MonitoringAlert
 
 
+def is_egress_allowed(destination: str, payload: str) -> bool:
     import re
     if not destination.startswith("https://api.vinbank.internal"):
         return False
